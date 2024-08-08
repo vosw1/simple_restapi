@@ -4,7 +4,6 @@ import com.example.simpe_restapi.item.Item;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import org.springframework.stereotype.Service;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -31,7 +30,7 @@ public class FileStorage {
         // XML 파일에서 객체로 변환
         List<Item> items = xmlMapper.readValue(new File(FILE_PATH), xmlMapper.getTypeFactory().constructCollectionType(List.class, Item.class));
 
-        // 객체를 JSON으로 변환
-        return jsonMapper.writeValueAsString(items);
+        // 객체를 JSON으로 포맷팅하여 변환
+        return jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(items);
     }
 }

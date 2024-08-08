@@ -1,4 +1,5 @@
 package com.example.simpe_restapi.item;
+
 import com.example.simpe_restapi._core.FileStorage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +13,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/items")
-@CrossOrigin(origins = "http://localhost:8080") // 허용할 도메인
+@CrossOrigin(origins = "http://localhost:8080")
 public class ItemController {
 
     @Autowired
@@ -22,8 +23,19 @@ public class ItemController {
     private FileStorage fileStorage;
 
     @GetMapping
-    public List<Item> getAllItems() {
-        return itemRepository.findAll();
+    public ResponseEntity<String> getItems() {
+        try {
+            String jsonFromXml = fileStorage.getItemsAsJson();
+            return new ResponseEntity<>(jsonFromXml, HttpStatus.OK);
+        } catch (IOException e) {
+            List<Item> items = itemRepository.findAll();
+            try {
+                String jsonFromDb = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(items);
+                return new ResponseEntity<>(jsonFromDb, HttpStatus.OK);
+            } catch (IOException jsonException) {
+                return new ResponseEntity<>("Error occurred while converting data to JSON", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
     }
 
     @GetMapping("/{id}")
@@ -35,33 +47,27 @@ public class ItemController {
 
     @PostMapping
     public ResponseEntity<Item> createItem(@RequestBody Item item) {
-        Item createdItem = itemRepository.save(item);
         try {
-            // 모든 아이템을 JSON으로 변환하여 XML로 저장
-            List<Item> items = itemRepository.findAll();
-            String jsonData = new ObjectMapper().writeValueAsString(items);
-            fileStorage.saveItemsAsXml(jsonData);
+            Item createdItem = itemRepository.save(item);
+            saveAllItemsToXml();
+            return new ResponseEntity<>(createdItem, HttpStatus.CREATED);
         } catch (IOException e) {
-            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<>(createdItem, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Item> updateItem(@PathVariable int id, @RequestBody Item item) {
         Optional<Item> existingItem = itemRepository.findById(id);
         if (existingItem.isPresent()) {
-            item.setId(id);
-            Item updatedItem = itemRepository.save(item);
             try {
-                // 모든 아이템을 JSON으로 변환하여 XML로 저장
-                List<Item> items = itemRepository.findAll();
-                String jsonData = new ObjectMapper().writeValueAsString(items);
-                fileStorage.saveItemsAsXml(jsonData);
+                item.setId(id);
+                Item updatedItem = itemRepository.save(item);
+                saveAllItemsToXml();
+                return new ResponseEntity<>(updatedItem, HttpStatus.OK);
             } catch (IOException e) {
-                e.printStackTrace();
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
-            return new ResponseEntity<>(updatedItem, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -71,14 +77,16 @@ public class ItemController {
     public ResponseEntity<Void> deleteItem(@PathVariable int id) {
         itemRepository.deleteById(id);
         try {
-            // 모든 아이템을 JSON으로 변환하여 XML로 저장
-            List<Item> items = itemRepository.findAll();
-            String jsonData = new ObjectMapper().writeValueAsString(items);
-            fileStorage.saveItemsAsXml(jsonData);
+            saveAllItemsToXml();
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (IOException e) {
-            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    private void saveAllItemsToXml() throws IOException {
+        List<Item> items = itemRepository.findAll();
+        String jsonData = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(items);
+        fileStorage.saveItemsAsXml(jsonData);
     }
 }
-

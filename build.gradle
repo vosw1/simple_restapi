@@ -37,6 +37,7 @@ dependencies {
 
     // XML 처리용 Jackson 라이브러리
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.15.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 }
 
 tasks.named('test') {
